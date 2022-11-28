@@ -60,6 +60,8 @@ func CreateUser() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		user.TimeStamp = user.ID.Timestamp()
+
 		// saving user, but we don't know the _id yet
 		InsertOneResult, err := models.CreateUser(user)
 		if err != nil {
@@ -77,7 +79,6 @@ func CreateUser() func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		user.TimeStamp = user.ID.Timestamp()
 
 		// writing response
 		utils.R(w, http.StatusCreated, user)
@@ -86,7 +87,41 @@ func CreateUser() func(w http.ResponseWriter, r *http.Request) {
 
 func UpdateUserByLogin() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// looking for better alternative getting query from path
+		query := strings.Split(r.URL.Path, "/")[1]
 
+		var newUser models.User
+
+		// parsing user from request body
+		err := utils.ParseUser(r, &newUser)
+		if err != nil {
+			utils.ServeError(w, err, http.StatusBadRequest, "Error parsing user")
+			return
+		}
+
+		// checking for unique username
+		err = newUser.Validate()
+		if err != nil {
+			utils.ServeError(w, err, http.StatusNotAcceptable, "Error validating user")
+			return
+		}
+
+		res := models.UpdateUserByLogin(query, newUser)
+		if res.Err() != nil {
+			utils.ServeError(w, err, http.StatusBadRequest, "Couldn't update user")
+			return
+		}
+		var ress models.User
+		if err := res.Decode(&ress); err != nil {
+			utils.ServeError(w, err, http.StatusBadRequest, "Couldn't update user")
+			return
+		}
+		user, err := models.GetUserByLogin(newUser.Login)
+		if err != nil {
+			utils.ServeError(w, err, http.StatusBadRequest, "Something went wrong")
+			return
+		}
+		utils.R(w, 200, user)
 	}
 }
 

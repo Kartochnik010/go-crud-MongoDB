@@ -95,3 +95,10 @@ func DeleteUserByLogin(query string) (int, error) {
 	cnt, err := collection.DeleteOne(context.TODO(), bson.M{"login": query})
 	return int(cnt.DeletedCount), err
 }
+
+func UpdateUserByLogin(query string, newUser User) *mongo.SingleResult {
+	collection := env.DB.Database("novye").Collection("users")
+
+	res := collection.FindOneAndUpdate(context.TODO(), bson.M{"login": query}, bson.M{"$set": newUser})
+	return res
+}
