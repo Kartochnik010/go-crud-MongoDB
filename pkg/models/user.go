@@ -2,11 +2,13 @@ package models
 
 import (
 	"context"
+	"errors"
 	"go-crud-MongoDB/pkg/env"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type User struct {
@@ -20,20 +22,29 @@ type User struct {
 	TimeStamp  time.Time          `json:"timestamp" bson:"timestamp"`
 }
 
-func CreateUser(user User) error {
-	collection := env.DB.Database("novye").Collection("users")
-
-	// indexName, err := db.CreateUniqueIndex(collection, "login")
-	// if err != nil {
-	// 	fmt.Println("Couldn't create unique index")
-	// 	return err
-	// }
-	// fmt.Printf("Unique index %s created\n", indexName)
-	_, err := collection.InsertOne(context.TODO(), user)
+// for now simply checking for same values
+// Couldn't figure out how to create a unique field in MongoDB
+func (u *User) Validate() error {
+	users, err := GetAllUsers()
 	if err != nil {
 		return err
 	}
+
+	for _, user := range users {
+		if user.Login == u.Login {
+			return errors.New("User already exists")
+		}
+	}
 	return nil
+}
+
+func CreateUser(user User) (*mongo.InsertOneResult, error) {
+	collection := env.DB.Database("novye").Collection("users")
+	res, err := collection.InsertOne(context.TODO(), user)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func GetAllUsers() ([]User, error) {
@@ -76,4 +87,11 @@ func GetUserByLogin(query string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
+}
+
+// drop user by id
+func DeleteUserByLogin(query string) (int, error) {
+	collection := env.DB.Database("novye").Collection("users")
+	cnt, err := collection.DeleteOne(context.TODO(), bson.M{"login": query})
+	return int(cnt.DeletedCount), err
 }

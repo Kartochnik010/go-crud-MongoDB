@@ -28,7 +28,7 @@ func MustGetClient() *mongo.Client {
 	return client
 }
 
-// for creating migrations
+// for creating migrations later on
 func CreateUniqueIndex(collection *mongo.Collection, name string) (string, error) {
 	IndexName, err := collection.Indexes().CreateOne(
 		context.Background(),
